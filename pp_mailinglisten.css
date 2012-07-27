@@ -9,11 +9,10 @@ table.mailinglisten tbody {
 
 table.mailinglisten td {
 	padding: 0;
-	padding-right: 10px;
+	padding-right: 6px;
 	margin: 0;
 }
 
-table.mailinglisten td:first-child {
-	padding-right: 1.3em;
-	width: 220px;
+table.mailinglisten td:last-child {
+	padding-right: 0;
 }

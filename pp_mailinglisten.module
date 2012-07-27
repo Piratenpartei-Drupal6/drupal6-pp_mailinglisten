@@ -21,7 +21,19 @@ function pp_mailinglisten_help($path, $arg) {
 
 
 /**
-* Generate HTML for the pp_newsletter block
+ * Implementation of hook_init().
+ *
+ * These includes do not need to be loaded for cached pages.
+ */
+function pp_mailinglisten_init() {
+    // Add necessary CSS and JS.
+    drupal_add_css(drupal_get_path('module', 'pp_mailinglisten') .'/pp_mailinglisten.css');
+    drupal_add_js(drupal_get_path('module', 'pp_mailinglisten') .'/pp_mailinglisten.js');
+}
+
+
+/**
+* Generate HTML for the pp_mailinglisten block
 * @param op the operation from the URL
 * @param delta offset
 * @returns block HTML
@@ -33,9 +45,12 @@ function pp_mailinglisten_block($op='list', $delta=0) {
     $block[0]["info"] = t('Piratenpartei Hessen Mailinglisten');
     return $block;
   } else if ($op == 'view') {
-    // Add necessary CSS and JS.
-    drupal_add_css(drupal_get_path('module', 'pp_mailinglisten') .'/pp_mailinglisten.css');
-    drupal_add_js(drupal_get_path('module', 'pp_mailinglisten') .'/pp_mailinglisten.js');
+
+
+	// set up the block
+    $block['subject'] = '';
+    $block['content'] = '<script type="text/javascript">var pp_mailinglisten = 1;</script>';
+    return $block;
   }
 }
 
