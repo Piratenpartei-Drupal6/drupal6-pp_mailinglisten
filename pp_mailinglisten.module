@@ -30,7 +30,7 @@ function pp_mailinglisten_block($op='list', $delta=0) {
 
   // listing of blocks, such as on the admin/block page
   if ($op == "list") {
-    $block[0]["info"] = t('Piratenpartei Deutschland Newsletter');
+    $block[0]["info"] = t('Piratenpartei Hessen Mailinglisten');
     return $block;
   } else if ($op == 'view') {
     // Add necessary CSS and JS.
