@@ -1,0 +1,19 @@
+table.mailinglisten {
+	margin: 0;
+	width: auto;
+}
+
+table.mailinglisten tbody {
+	border: 0;
+}
+
+table.mailinglisten td {
+	padding: 0;
+	padding-right: 10px;
+	margin: 0;
+}
+
+table.mailinglisten td:first-child {
+	padding-right: 1.3em;
+	width: 220px;
+}

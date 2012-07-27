@@ -1,0 +1,34 @@
+<?php
+
+/**
+* Display help and module information.
+* @param path
+*   Which path of the site we're displaying help.
+* @param arg
+*   Array that holds the current path as would be returned from arg() function.
+* @return
+*   help text for the path.
+*/
+function pp_mailinglisten_help($path, $arg) {
+  $output = '';
+  switch ($path) {
+    case "admin/help#pp_mailinglisten":
+      $output = '<p>'. t("Formatiert und dynamisiert die Mailinglisten-Anzeige inkl. Abonnenten").'</p>';
+      break;
+  }
+  return $output;
+} // function pp_mailinglisten_help
+
+
+/**
+ * Implementation of hook_init().
+ *
+ * These includes do not need to be loaded for cached pages.
+ */
+function pp_mailinglisten_init() {
+  // Add necessary CSS and JS.
+  drupal_add_css(drupal_get_path('module', 'pp_mailinglisten') .'/pp_mailinglisten.css');
+  drupal_add_js(drupal_get_path('module', 'pp_mailinglisten') .'/pp_mailinglisten.js');
+}
+
+?>
