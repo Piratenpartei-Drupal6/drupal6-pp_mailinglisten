@@ -212,8 +212,6 @@ function pp_mailinglisten_cron() {
 					} else {
 						throw new Exception(t("Section nicht gefunden"));
 					}
-					
-					variable_set('pp_mailinglisten_last_run', time());
 				}
 			} catch (Exception $e) {
 				if ($debug) print_r($e);
@@ -224,6 +222,8 @@ function pp_mailinglisten_cron() {
 			}
 			
 			chdir($cwd);
+			
+			variable_set('pp_mailinglisten_last_run', time());
 		} else {
 			$ret = t("Im XML gab es keine neuen Änderungen.");
 		}
