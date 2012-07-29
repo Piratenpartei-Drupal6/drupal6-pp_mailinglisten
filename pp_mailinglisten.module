@@ -1,6 +1,38 @@
 <?php
 
 /**
+ * Implementation of hook_meu()
+ */
+function pp_mailinglisten_menu() {
+  $items = array();
+
+  $items['admin/settings/piraten/mailinglisten'] = array(
+	'title' => 'Mailinglisten',
+	'description' => 'Wiki- und Cronjob-Einstellungen',
+	'page callback' => 'drupal_get_form',
+	'page arguments' => array('pp_mailinglisten_admin_form'),
+	'access arguments' => array('administer pp_mailinglisten'),
+	'file' => 'pp_mailinglisten.admin.inc'
+  );
+
+  $items['admin/settings/piraten/mailinglisten/settings'] = array(
+	'title' => 'Settings',
+	'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  $items['admin/settings/piraten/mailinglisten/update'] = array(
+	'title' => 'Update Now',
+	'page callback' => 'pp_mailinglisten_update',
+	'access arguments' => array('update pp_mailinglisten'),
+	'type' => MENU_LOCAL_TASK,
+	'weight' => 1,
+  );
+
+  return $items;
+}
+
+
+/**
 * Display help and module information.
 * @param path
 *   Which path of the site we're displaying help.
@@ -33,6 +65,15 @@ function pp_mailinglisten_init() {
 
 
 /**
+* Valid permissions for this module
+* @return array An array of valid permissions for the pp_mailinglisten module
+*/
+function pp_mailinglisten_perm() {
+  return array('administer pp_mailinglisten', 'update pp_mailinglisten');
+} // function pp_mailinglisten_perm()
+
+
+/**
 * Generate HTML for the pp_mailinglisten block
 * @param op the operation from the URL
 * @param delta offset
@@ -52,6 +93,144 @@ function pp_mailinglisten_block($op='list', $delta=0) {
     $block['content'] = '<script type="text/javascript">var pp_mailinglisten = 1;</script>';
     return $block;
   }
+}
+
+
+/**
+*
+*/
+function pp_mailinglisten_update() {
+	// run cron
+		$ret = pp_mailinglisten_cron();
+
+	// clear cache
+		cache_clear_all(NULL, 'pp_mailinglisten');
+
+	// return
+		return $ret;
+}
+
+/**
+*
+*/
+function pp_mailinglisten_cron() {
+	global $base_path;
+
+	$url = variable_get('pp_mailinglisten_url', NULL);
+	$site = variable_get('pp_mailinglisten_site', NULL);
+	$user = variable_get('pp_mailinglisten_user', NULL);
+	$password = variable_get('pp_mailinglisten_password', NULL);
+	$stats = variable_get('pp_mailinglisten_stats_url', NULL);
+	$checksum = variable_get('pp_mailinglisten_checksum', NULL);
+
+	$vars = array(
+		"url" => $url,
+		"site" => $site,
+		"user" => $user,
+		"password" => $password,
+		"stats" => $stats,
+	);
+
+	$debug = false;
+
+	if (!empty($url) && !empty($site) && !empty($user) && !empty($password) && !empty($stats)) {
+		if ($debug) echo "<pre>";
+
+		$stats = "http://".$stats;
+		if ($debug) echo $stats."\n";
+
+		$doc = new DOMDocument();
+		@$doc->loadHTMLFile($stats);
+
+		$chksm = sha1($doc->saveXML());
+		if ($debug) echo $chksm."\n";
+
+		if ($checksum != $chksm) {
+			$wiki_lists = array();
+
+			$lists = $doc->getElementsByTagName('list');
+			for ($i = 0; $i < $lists->length; $i++) {
+				$list = $lists->item($i)->attributes;
+				
+				$wiki_lists[$list->getNamedItem("name")->value] = array(
+					"url"		=> strtolower($list->getNamedItem("url")->value),
+					"members"	=> $list->getNamedItem("members")->value,
+					"email"		=> strtolower($list->getNamedItem("mail")->value),
+				);
+			}
+			#ksort($wiki_lists);
+
+			if ($debug) print_r($wiki_lists);
+			
+			$wiki = "== Abonnenten ==\n";
+			$wiki .= "{| class='wikitable sortable'\n";
+			$wiki .= "! Liste !! Mitglieder !! E-Mail\n";
+			$wiki .= "\n";
+			foreach ($wiki_lists as $name => $list) {
+				$wiki .= "|-\n";
+				$wiki .= "| [".$list["url"]." ".$name."]\n";
+				$wiki .= "| align='right' | ".$list["members"]."\n";
+				$wiki .= "| align='left' | ".str_replace("@", "(at)", str_replace(".", "(punkt)", $list["email"]))."\n";
+				$wiki .= "\n";
+			}
+			$wiki .= "|}";
+
+			if ($debug) echo $wiki."\n";
+			
+			$cwd = getcwd();
+			chdir(drupal_get_path('module', 'pp_mailinglisten') . "/wikimate");
+			require_once("globals.php");
+
+			try {
+				$wm = new Wikimate("https://".$url);
+
+				if ($wm->login($user, $password)) {
+					$page = $wm->getPage($site);
+					if (!$page->exists()) {
+						throw new Exception(t("Wiki-Seite fehlt"));
+					}
+		
+					$sections = array_flip(array_keys($page->getAllSections(false, WikiPage::SECTIONLIST_BY_NAME)));
+					if ($debug) print_r($sections);
+					
+					$section = $sections["Abonnenten"];
+					if ($debug) echo $section."\n";
+					
+					if ($page->setText($wiki, $section)) {
+						// success
+						variable_set('pp_mailinglisten_checksum', $chksm);
+						$ret = t("Mailinglisten Abonnenten sind im Wiki aktualisiert");
+					} else {
+						// error
+						$error = $page->getError();
+						if ($debug) print_r($error);
+						$error = $error["error"]["info"];
+
+						throw new Exception($error);
+					}
+					
+					variable_set('pp_mailinglisten_last_run', time());
+				}
+			} catch (Exception $e) {
+				if ($debug) print_r($e);
+
+				$ret = t("Es ist ein Fehler aufgetreten:")." ".$e->getMessage();
+				
+				watchdog('pp_mailingliste', $ret);
+			}
+			
+			chdir($cwd);
+		} else {
+			$ret = t("Im XML gab es keine neuen Änderungen.");
+		}
+		
+		if ($debug) echo "</pre>";
+	} else {
+		$ret = t("Cron run failed: Missing variables");
+		watchdog('pp_mailingliste', $ret, $vars, WATCHDOG_ERROR);
+	}
+	
+	return $ret;
 }
 
 ?>
