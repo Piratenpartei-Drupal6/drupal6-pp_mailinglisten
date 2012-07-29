@@ -193,20 +193,24 @@ function pp_mailinglisten_cron() {
 					$sections = array_flip(array_keys($page->getAllSections(false, WikiPage::SECTIONLIST_BY_NAME)));
 					if ($debug) print_r($sections);
 					
-					$section = $sections["Abonnenten"];
-					if ($debug) echo $section."\n";
-					
-					if ($page->setText($wiki, $section)) {
-						// success
-						variable_set('pp_mailinglisten_checksum', $chksm);
-						$ret = t("Mailinglisten Abonnenten sind im Wiki aktualisiert");
-					} else {
-						// error
-						$error = $page->getError();
-						if ($debug) print_r($error);
-						$error = $error["error"]["info"];
+					if (isset($sections["Abonnenten"])) {
+						$section = $sections["Abonnenten"];
+						if ($debug) echo $section."\n";
+						
+						if ($page->setText($wiki, $section)) {
+							// success
+							variable_set('pp_mailinglisten_checksum', $chksm);
+							$ret = t("Mailinglisten Abonnenten sind im Wiki aktualisiert");
+						} else {
+							// error
+							$error = $page->getError();
+							if ($debug) print_r($error);
+							$error = $error["error"]["info"];
 
-						throw new Exception($error);
+							throw new Exception($error);
+						}
+					} else {
+						throw new Exception(t("Section nicht gefunden"));
 					}
 					
 					variable_set('pp_mailinglisten_last_run', time());
