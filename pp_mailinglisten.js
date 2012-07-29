@@ -2,7 +2,7 @@ $(document).ready(function() {
 	if (typeof pp_mailinglisten !== "undefined") {
 		$.ajax({
 			type: "GET",
-			url: "/stats.php",
+			url: "/stats.xml.php",
 			dataType: "xml",
 			cache: false,
 			success: function(xml) {
