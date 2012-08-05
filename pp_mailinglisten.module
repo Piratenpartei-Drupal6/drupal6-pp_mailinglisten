@@ -151,7 +151,7 @@ function pp_mailinglisten_cron() {
 			$lists = $doc->getElementsByTagName('list');
 			for ($i = 0; $i < $lists->length; $i++) {
 				$list = $lists->item($i)->attributes;
-				
+
 				$wiki_lists[$list->getNamedItem("name")->value] = array(
 					"url"		=> strtolower($list->getNamedItem("url")->value),
 					"members"	=> $list->getNamedItem("members")->value,
@@ -161,7 +161,7 @@ function pp_mailinglisten_cron() {
 			#ksort($wiki_lists);
 
 			if ($debug) print_r($wiki_lists);
-			
+
 			$wiki = "== Abonnenten ==\n";
 			$wiki .= "{| class='wikitable sortable'\n";
 			$wiki .= "! Liste !! Mitglieder !! E-Mail\n";
@@ -176,7 +176,7 @@ function pp_mailinglisten_cron() {
 			$wiki .= "|}";
 
 			if ($debug) echo $wiki."\n";
-			
+
 			$cwd = getcwd();
 			chdir(drupal_get_path('module', 'pp_mailinglisten') . "/wikimate");
 			require_once("globals.php");
@@ -189,51 +189,61 @@ function pp_mailinglisten_cron() {
 					if (!$page->exists()) {
 						throw new Exception(t("Wiki-Seite fehlt"));
 					}
-		
-					$sections = array_flip(array_keys($page->getAllSections(false, WikiPage::SECTIONLIST_BY_NAME)));
-					if ($debug) print_r($sections);
-					
-					if (isset($sections["Abonnenten"])) {
-						$section = $sections["Abonnenten"];
-						if ($debug) echo $section."\n";
-						
-						if ($page->setText($wiki, $section)) {
+
+					$sections = $page->getAllSections(true);
+					/*echo "<pre>";
+					print_r($sections);
+					echo "</pre>";/**/
+
+					$section = -1;
+					foreach($sections as $idx => $header) {
+						if (strpos($header, "== Abonnenten ==") !== false) {
+							$section = $idx+2;
+						}
+					}
+					if ($debug) echo $section."\n";
+
+					if ($section == -1) {
+						throw new Exception(t("Section nicht gefunden"));
+					} else {
+						if ($page->setSection($wiki, $section, "Update vom ".date("d.m.Y H:i:s"))) {
 							// success
+							if ($debug) echo "success\n";
 							variable_set('pp_mailinglisten_checksum', $chksm);
 							$ret = t("Mailinglisten Abonnenten sind im Wiki aktualisiert");
 						} else {
 							// error
+							if ($debug) echo "error\n";
+							if ($debug) print_r($wm->getError());
 							$error = $page->getError();
 							if ($debug) print_r($error);
 							$error = $error["error"]["info"];
 
 							throw new Exception($error);
 						}
-					} else {
-						throw new Exception(t("Section nicht gefunden"));
 					}
 				}
 			} catch (Exception $e) {
 				if ($debug) print_r($e);
 
 				$ret = t("Es ist ein Fehler aufgetreten:")." ".$e->getMessage();
-				
+
 				watchdog('pp_mailingliste', $ret);
 			}
-			
+
 			chdir($cwd);
-			
+
 			variable_set('pp_mailinglisten_last_run', time());
 		} else {
-			$ret = t("Im XML gab es keine neuen Änderungen.");
+			$ret = t("Im XML gab es keine neuen Ã„nderungen.");
 		}
-		
+
 		if ($debug) echo "</pre>";
 	} else {
 		$ret = t("Cron run failed: Missing variables");
 		watchdog('pp_mailingliste', $ret, $vars, WATCHDOG_ERROR);
 	}
-	
+
 	return $ret;
 }
 

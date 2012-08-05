@@ -12,7 +12,7 @@ class Wikimate {
 
     const SECTIONLIST_BY_NAME = 1;
     const SECTIONLIST_BY_INDEX = 2;
-    
+
     private $api;
     private $username;
     private $password;
@@ -26,25 +26,26 @@ class Wikimate {
      * If it can't login the class will exit and return null
      */
     function __construct( $api ) {
-    	
+
     		$this->api = $api;
-    		
-		$this->initCurl();		
+
+		$this->initCurl();
 		$this->checkCookieFileIsWritable();
     }
-    
+
     private function initCurl() {
-    	
+
     	if ( !class_exists('Curl') || !class_exists('CurlResponse') )
 		throw new Exception("Failed to create Wikimate - could not find the Curl class");
-		
+
 	$this->c = new Curl();
 	$this->c->user_agent = "Wikimate 0.5";
 	$this->c->cookie_file = "wikimate_cookie.txt";
+	$this->c->headers["Expect"] = "";
     }
-    
+
     private function checkCookieFileIsWritable() {
-    	
+
 	if ( !file_exists( $this->c->cookie_file ) )
 		if ( file_put_contents( $this->c->cookie_file, "" ) === FALSE )
 			throw new Exception("Could not write to cookie file, please check that the web server can write to ".dirname(__SCRIPT__));
@@ -93,7 +94,7 @@ class Wikimate {
 
 			// Send the confirm token request
 			$loginResult = $this->c->post( $this->api, $details )->body;
-			
+
 			// Check if we got an API result or the API doc page (invalid request)
 			if ( strstr( $loginResult, "This is an auto-generated MediaWiki API documentation page" ) ) {
 			        $this->error['login'] = "The API could not understand the confirm token request";
@@ -151,9 +152,9 @@ class Wikimate {
             echo "<pre>",print_r($this->c->options,1),"</pre>";
             return true;
         }
-        
+
         return $this->c->options;
-    }        
+    }
 
     /**
      * Returns a WikiPage object populated with the page data
@@ -177,7 +178,7 @@ class Wikimate {
 		$apiResult = $this->c->get( $this->api, $array );
 
 		return unserialize($apiResult);
-		
+
     }
 
     /**
@@ -240,7 +241,7 @@ class WikiPage {
 		$this->wikimate = $wikimate;
 		$this->title = $title;
 		$this->text = $this->getText(true);
-		
+
 		if ( $this->invalid ) {
 			echo "Invalid page title - cannot create WikiPage";
 			return null;
@@ -331,7 +332,7 @@ class WikiPage {
     function getNumSections() {
 		return count( $this->sections->byIndex );
     }
-	
+
 	/**
 	 * Returns the sections offsets and lengths
 	 * @return StdClass section class
@@ -392,49 +393,49 @@ class WikiPage {
 
 			// Now we need to get the section information
 			preg_match_all('/((\r|\n)={1,5}.*={1,5}(\r|\n))/', $this->text, $m ); // TODO: improve regexp if possible
-			
+
 			// Set the intro section (between title and first section)
 			$this->sections->byIndex[0]['offset'] = 0;
 			$this->sections->byName['intro']['offset'] = 0;
-			
+
 			if ( !empty( $m[1] ) ) {
-				
+
 				// Array of section names
 				$sections = $m[1];
-				
+
 				// Setup the current section
 				$currIndex = 0;
 				$currName = 'intro';
-				
+
 				foreach ( $sections as $i => $section ) {
-					
+
 					// Get the current offset
 					$currOffset = strpos( $this->text, $section );
-					
+
 					// Are we still on the first section?
 					if ( $currIndex == 0 ) {
 						$this->sections->byIndex[$currIndex]['length'] = $currOffset;
 						$this->sections->byName[$currName]['length'] = $currOffset;
 					}
-					
+
 					// Get the current name and index
 					$currName = trim(str_replace('=','',$section));
 					$currIndex++;
-					
+
 					// Set the offset for the current section
 					$this->sections->byIndex[$currIndex]['offset'] = $currOffset;
 					$this->sections->byName[$currName]['offset'] = $currOffset;
-				
+
 					// If there is a section after this, set the length of this one
 					if ( isset( $sections[$currIndex] ) ) {
 						$nextOffset = strpos( $this->text, $sections[$currIndex] ); // get the offset of the next section
 						$length = $nextOffset - $currOffset; // calculate the length of this one
-						
+
 						// Set the length of this section
 						$this->sections->byIndex[$currIndex]['length'] = $length;
 						$this->sections->byName[$currName]['length'] = $length;
 					}
-				
+
 				}
 			}
 		}
@@ -447,10 +448,10 @@ class WikiPage {
      * Returns the section requested, section can be the following:
      * - section name (string:"History")
      * - section index (int:3)
-     * 
+     *
      * @param mixed $section the section to get
      * @param boolan $includeHeading false to get section text only
-     * @return string wikitext of the section on the page 
+     * @return string wikitext of the section on the page
      */
     function getSection( $section, $includeHeading=false ) {
 		// Check if we have a section name or index
@@ -467,14 +468,14 @@ class WikiPage {
 		} else {
 			$text = substr( $this->text, $offset );
 		}
-		
+
 		// Whack of the heading if need be
 		if ( !$includeHeading && $offset > 0 ) {
 			$text = substr( $text, strpos( trim($text), "\n" ) ); // chop off the first line
 		}
-		
+
 		return $text;
-	
+
     }
 
     /**
@@ -592,7 +593,7 @@ class WikiPage {
      * @return boolean true if the section was saved
      */
     function setSection( $text, $section=0, $summary=null, $minor=false ) {
-		$this->setText( $text, $section, $minor, $summary );
+		return $this->setText( $text, $section, $minor, $summary );
     }
 
     /**
